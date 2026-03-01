@@ -1,2 +1,3 @@
-2023/12/27-23:13:01.137 4524 Creating DB D:\Programming\Projects\rollercoin-bot\user_data\Default\Session Storage since it was missing.
-2023/12/27-23:13:01.243 4524 Reusing MANIFEST D:\Programming\Projects\rollercoin-bot\user_data\Default\Session Storage/MANIFEST-000001
+2026/03/01-11:10:00.838 3e58 Reusing MANIFEST C:\Users\IMANYCH PC\Desktop\My Files\Rollercoin-bot-nodejs\user_data\Default\Session Storage/MANIFEST-000001
+2026/03/01-11:10:00.839 3e58 Recovering log #24
+2026/03/01-11:10:00.841 3e58 Reusing old log C:\Users\IMANYCH PC\Desktop\My Files\Rollercoin-bot-nodejs\user_data\Default\Session Storage/000024.log 

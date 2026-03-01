@@ -1,2 +1,3 @@
-2023/12/27-23:13:01.155 10e28 Creating DB D:\Programming\Projects\rollercoin-bot\user_data\Default\Local Storage\leveldb since it was missing.
-2023/12/27-23:13:01.255 10e28 Reusing MANIFEST D:\Programming\Projects\rollercoin-bot\user_data\Default\Local Storage\leveldb/MANIFEST-000001
+2026/03/01-11:10:00.736 3e58 Reusing MANIFEST C:\Users\IMANYCH PC\Desktop\My Files\Rollercoin-bot-nodejs\user_data\Default\Local Storage\leveldb/MANIFEST-000001
+2026/03/01-11:10:00.739 3e58 Recovering log #22
+2026/03/01-11:10:00.741 3e58 Reusing old log C:\Users\IMANYCH PC\Desktop\My Files\Rollercoin-bot-nodejs\user_data\Default\Local Storage\leveldb/000022.log 
