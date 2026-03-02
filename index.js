@@ -21,7 +21,9 @@ async function coinFisher() {
     args: [
       '--start-maximized',
       '--disable-blink-features=AutomationControlled',
-      '--disable-session-crashed-bubble'
+      '--disable-session-crashed-bubble',
+      "--no-sandbox",
+      "--disable-setuid-sandbox"
     ]
   });
 
@@ -105,10 +107,10 @@ async function coinFisher() {
 
 
 
-      const steps = coinFisherLevel < 4 ? 70 : coinFisherLevel < 7 ? 50 : 45;        // сколько кликов слева направо
-      const delayMs = 400;     // интервал
-      const topPaddingReal = coinFisherLevel < 4 ? 60 : coinFisherLevel < 7 ? 120 : 125; // отступ сверху В РЕАЛЬНЫХ пикселях canvas
-      const sidePaddingReal = coinFisherLevel < 4 ? 5 : coinFisherLevel < 7 ? 3 : 3; // отступы слева/справа В РЕАЛЬНЫХ пикселях canvas
+      const steps = 60;        // сколько кликов слева направо
+      const delayMs = 500;     // интервал
+      const topPaddingReal = 60; // отступ сверху В РЕАЛЬНЫХ пикселях canvas
+      const sidePaddingReal = 4; // отступы слева/справа В РЕАЛЬНЫХ пикселях canvas
 
       // 1) CSS рамка (куда кликаем)
       const canvasHandle = await page.$("canvas");
@@ -170,6 +172,6 @@ async function coinFisher() {
 
 coinFisher();
 // Для теста — каждую минуту
-cron.schedule(`*/${coinFisherLevel < 4 ? 3 : 5} * * * *`, coinFisher);
+cron.schedule(`*/${3} * * * *`, coinFisher);
 
 console.log('Cron started...');
