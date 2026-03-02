@@ -14,15 +14,14 @@ async function coinFisher() {
   console.log('Task started:', new Date().toLocaleString());
 
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: false,
     userDataDir: './user_data',
     defaultViewport: null,
     ignoreHTTPSErrors: true,
     args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-blink-features=AutomationControlled",
+      '--start-maximized',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-session-crashed-bubble'
     ]
   });
 
