@@ -5,8 +5,42 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const cron = require('node-cron');
 puppeteer.use(StealthPlugin());
+const fs = require('fs');
+const path = require('path');
 
 let isRunning = false; // чтобы cron не запускал параллельно
+
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function startScreenshotLoop(page, folderName = 'screenshots', intervalMs = 1000) {
+  const screenshotsDir = path.join(process.cwd(), folderName);
+  ensureDir(screenshotsDir);
+
+  let counter = 1;
+
+  const interval = setInterval(async () => {
+    try {
+      const fileName = `shot-${String(counter).padStart(4, '0')}.png`;
+      const filePath = path.join(screenshotsDir, fileName);
+
+      await page.screenshot({
+        path: filePath,
+        fullPage: true
+      });
+
+      console.log(`Saved: ${filePath}`);
+      counter++;
+    } catch (err) {
+      console.log('Screenshot error:', err.message);
+    }
+  }, intervalMs);
+
+  return () => clearInterval(interval);
+}
 
 async function start() {
   if (isRunning) return;
@@ -30,11 +64,16 @@ async function start() {
     ]
   });
 
+  let stopScreenshots;
+
   try {
     const pages = await browser.pages();
 
     // Оставляем только первую вкладку, остальные закрываем
     const page = pages[0];
+
+    stopScreenshots = startScreenshotLoop(page, 'screenshots', 1000);
+    
     for (let i = 1; i < pages.length; i++) {
       await pages[i].close();
     }
@@ -349,6 +388,10 @@ async function start() {
   } catch (e) {
     console.error('Task error:', e);
   } finally {
+    if (stopScreenshots) {
+      stopScreenshots();
+    }
+
     await browser.close();
     isRunning = false;
     console.log('Task finished:', new Date().toLocaleString());
