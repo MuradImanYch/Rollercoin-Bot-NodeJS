@@ -97,7 +97,7 @@ async function start() {
 
     // Закрываем всплывающее окно
     try {
-      await page.waitForSelector('.event-popup-modal-body .modal-close-btn', { timeout: 120000 });
+      await page.waitForSelector('.event-popup-modal-body .modal-close-btn', { timeout: 2000 });
       await new Promise(resolve => setTimeout(resolve, 2000));
       await page.click('.event-popup-modal-body .modal-close-btn');
     } catch (e) {
@@ -106,7 +106,7 @@ async function start() {
 
     // Собираем ежедневный бонус
     try {
-      await page.waitForSelector('.collect-btn.tree-dimensional-button', { timeout: 120000 });
+      await page.waitForSelector('.collect-btn.tree-dimensional-button', { timeout: 2000 });
       await new Promise(resolve => setTimeout(resolve, 2000));
       await page.click('.collect-btn.tree-dimensional-button');
     } catch (e) {
@@ -115,7 +115,7 @@ async function start() {
 
     // Заряжаем батарею
     try {
-      await page.waitForSelector('.electricity-recharge-btn-container', { timeout: 120000 });
+      await page.waitForSelector('.electricity-recharge-btn-container', { timeout: 2000 });
       await new Promise(resolve => setTimeout(resolve, 2000));
       await page.click('.electricity-recharge-btn-container');
     } catch (e) {
@@ -130,7 +130,7 @@ async function start() {
 
     // Закрываем всплывающее окно
     try {
-      await page.waitForSelector('.event-popup-modal-body .modal-close-btn', { timeout: 120000 });
+      await page.waitForSelector('.event-popup-modal-body .modal-close-btn', { timeout: 2000 });
       await new Promise(resolve => setTimeout(resolve, 2000));
       await page.click('.event-popup-modal-body .modal-close-btn');
     } catch (e) {
@@ -140,10 +140,10 @@ async function start() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     /*-- get current game level --*/
-    await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-information-number', { timeout: 120000 });
+    await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-information-number', { timeout: 2000 });
     let coinFisherLevel = await page.$eval('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-information-number', el => el.textContent.trim());
 
-    await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-information-number', { timeout: 120000 });
+    await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-information-number', { timeout: 2000 });
     let coins2048Level = await page.$eval('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-information-number', el => el.textContent.trim());
 
     let maxLevel = Math.max(coinFisherLevel, coins2048Level);
@@ -159,7 +159,7 @@ async function start() {
         try {
             await new Promise(resolve => setTimeout(resolve, maxLevel < 4 ? 40000 : maxLevel < 7 ? 250000 : 350000));
 
-            await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-start-button > button', { timeout: 120000 });
+            await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-start-button > button', { timeout: 2000 });
             await new Promise(resolve => setTimeout(resolve, 2000));
             await page.click('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(8) .game-start-button > button');
 
@@ -167,7 +167,7 @@ async function start() {
 
             console.log(`Coin fisher started at level ${coinFisherLevel}`);
 
-            await page.waitForSelector('canvas', { timeout: 120000 });
+            await page.waitForSelector('canvas', { timeout: 2000 });
 
             // Клик по центру канваса, чтобы запустить игру, а так же игровой процесс
             const canvas = await page.$('canvas');
@@ -258,7 +258,7 @@ async function start() {
         try {
             await new Promise(resolve => setTimeout(resolve, maxLevel < 4 ? 40000 : maxLevel < 7 ? 250000 : 350000));
 
-            await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-start-button > button', { timeout: 120000 });
+            await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-start-button > button', { timeout: 2000 });
             await new Promise(resolve => setTimeout(resolve, 2000));
             await page.click('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-start-button > button');
 
@@ -266,7 +266,7 @@ async function start() {
 
             console.log(`2048 Coins started at level ${coins2048Level}`);
 
-            await page.waitForSelector('canvas', { timeout: 120000 });
+            await page.waitForSelector('canvas', { timeout: 2000 });
 
             // Клик по центру канваса, чтобы запустить игру, а так же игровой процесс
             const canvas = await page.$('canvas');
