@@ -45,13 +45,23 @@ async function start() {
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
     );
+    await page.screenshot({
+  path: '52errbefore_login.png',
+  fullPage: true
+});
 
     // Очищаем страницу, чтобы не оставался старый сайт
     await page.goto('about:blank');
 
     await page.goto('https://rollercoin.com/game', {
-      waitUntil: 'domcontentloaded'
+      waitUntil: 'domcontentloaded',
+      timeout: 120000
     });
+
+    await page.screenshot({
+  path: '52errafter_login.png',
+  fullPage: true
+});
 
     // Авторизация при необходимости (если куки не сохранились)
     try {
