@@ -5,42 +5,8 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const cron = require('node-cron');
 puppeteer.use(StealthPlugin());
-const fs = require('fs');
-const path = require('path');
 
 let isRunning = false; // чтобы cron не запускал параллельно
-
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
-
-function startScreenshotLoop(page, folderName = 'screenshots', intervalMs = 1000) {
-  const screenshotsDir = path.join(process.cwd(), folderName);
-  ensureDir(screenshotsDir);
-
-  let counter = 1;
-
-  const interval = setInterval(async () => {
-    try {
-      const fileName = `shot-${String(counter).padStart(4, '0')}.png`;
-      const filePath = path.join(screenshotsDir, fileName);
-
-      await page.screenshot({
-        path: filePath,
-        fullPage: true
-      });
-
-      console.log(`Saved: ${filePath}`);
-      counter++;
-    } catch (err) {
-      console.log('Screenshot error:', err.message);
-    }
-  }, intervalMs);
-
-  return () => clearInterval(interval);
-}
 
 async function start() {
   if (isRunning) return;
@@ -64,16 +30,11 @@ async function start() {
     ]
   });
 
-  let stopScreenshots;
-
   try {
     const pages = await browser.pages();
 
     // Оставляем только первую вкладку, остальные закрываем
     const page = pages[0];
-
-    stopScreenshots = startScreenshotLoop(page, 'screenshots', 1000);
-    
     for (let i = 1; i < pages.length; i++) {
       await pages[i].close();
     }
@@ -84,23 +45,13 @@ async function start() {
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
     );
-    await page.screenshot({
-  path: '52errbefore_login.png',
-  fullPage: true
-});
 
     // Очищаем страницу, чтобы не оставался старый сайт
     await page.goto('about:blank');
 
     await page.goto('https://rollercoin.com/game', {
-      waitUntil: 'domcontentloaded',
-      timeout: 120000
+      waitUntil: 'domcontentloaded'
     });
-
-    await page.screenshot({
-  path: '52errafter_login.png',
-  fullPage: true
-});
 
     // Авторизация при необходимости (если куки не сохранились)
     try {
@@ -118,25 +69,10 @@ async function start() {
 
       const account = await popup.$('div[data-identifier="mura.imanov@gmail.com"]');
 
-      await page.screenshot({
-  path: 'before_login.png',
-  fullPage: true
-});
-
       if (account) {
         console.log('Account button found, clicking...');
         await account.click();
-
-        await page.screenshot({
-  path: 'cliick_on_identifier_login.png',
-  fullPage: true
-});
       } else {
-        await page.screenshot({
-  path: 'cliick_on_typing_email_login.png',
-  fullPage: true
-});
-
         console.log('Account button not found, typing email...');
         await popup.waitForSelector('input[type="email"]', { timeout: 10000 });
         await popup.type('input[type="email"]', 'mura.imanov@gmail.com');
@@ -388,10 +324,6 @@ async function start() {
   } catch (e) {
     console.error('Task error:', e);
   } finally {
-    if (stopScreenshots) {
-      stopScreenshots();
-    }
-
     await browser.close();
     isRunning = false;
     console.log('Task finished:', new Date().toLocaleString());
