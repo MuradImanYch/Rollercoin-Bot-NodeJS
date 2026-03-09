@@ -69,10 +69,25 @@ async function start() {
 
       const account = await popup.$('div[data-identifier="mura.imanov@gmail.com"]');
 
+      await page.screenshot({
+  path: 'before_login.png',
+  fullPage: true
+});
+
       if (account) {
         console.log('Account button found, clicking...');
         await account.click();
+
+        await page.screenshot({
+  path: 'cliick_on_identifier_login.png',
+  fullPage: true
+});
       } else {
+        await page.screenshot({
+  path: 'cliick_on_typing_email_login.png',
+  fullPage: true
+});
+
         console.log('Account button not found, typing email...');
         await popup.waitForSelector('input[type="email"]', { timeout: 10000 });
         await popup.type('input[type="email"]', 'mura.imanov@gmail.com');
