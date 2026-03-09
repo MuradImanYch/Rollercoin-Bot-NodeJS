@@ -67,15 +67,26 @@ async function start() {
       await popup.bringToFront();
       await popup.waitForLoadState?.(); // если playwright-стиль, можно убрать если ошибка
 
-      await popup.waitForSelector('div[data-identifier="mura.imanov@gmail.com"]', { timeout: 10000 });
+      const account = await popup.$('div[data-identifier="mura.imanov@gmail.com"]');
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (account) {
+        console.log('Account button found, clicking...');
+        await account.click();
+      } else {
+        console.log('Account button not found, typing email...');
+        await popup.waitForSelector('input[type="email"]', { timeout: 10000 });
+        await popup.type('input[type="email"]', 'mura.imanov@gmail.com');
 
-      await popup.click('div[data-identifier="mura.imanov@gmail.com"]');
+        await new Promise(r => setTimeout(r, 2000));
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await popup.click('#identifierNext > div > button > div.VfPpkd-RLmnJb');
+      }
 
       await popup.waitForSelector('input[type="password"]', { timeout: 10000 });
       await new Promise(resolve => setTimeout(resolve, 2000));
       await popup.type('input[type="password"]', 'btljkW3flJbftr3YDoZDd7|5Y');
+
       await new Promise(resolve => setTimeout(resolve, 2000));
       await popup.click('#passwordNext > div > button > div.VfPpkd-RLmnJb');
       await new Promise(resolve => setTimeout(resolve, 20000));
