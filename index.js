@@ -5,8 +5,208 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const cron = require('node-cron');
 puppeteer.use(StealthPlugin());
+const path = require('path');
+const { Jimp } = require('jimp');
+const cv = require('@techstark/opencv-js');
+const fs = require('fs');
 
 let isRunning = false; // чтобы cron не запускал параллельно
+
+/*----------- START COIN CLICK EXTERNAL FUNC --------------*/
+
+// Только хорошие объекты
+const GOOD_TEMPLATES = [
+  path.join(__dirname, 'assets', 'coinclick', 'bitcoin.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'bitcoin2.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'bitcoin3.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'bitcoin4.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dashcoin.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dashcoin2.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dashcoin3.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dogecoin.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dogecoin2.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'dogecoin3.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'ethereum.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'ethereum2.png'),
+  path.join(__dirname, 'assets', 'coinclick', 'litecoin.png'),
+];
+
+const MATCH_THRESHOLD = 0.38;
+const LOOP_DELAY_MS = 3;
+const CLICK_COOLDOWN_MS = 180;
+const DUPLICATE_RADIUS = 28;
+
+const recentClicks = [];
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function cleanupRecentClicks() {
+  const border = Date.now() - CLICK_COOLDOWN_MS;
+  while (recentClicks.length && recentClicks[0].time < border) {
+    recentClicks.shift();
+  }
+}
+
+function wasRecentlyClicked(x, y) {
+  cleanupRecentClicks();
+
+  return recentClicks.some(item => {
+    const dx = item.x - x;
+    const dy = item.y - y;
+    return Math.sqrt(dx * dx + dy * dy) < DUPLICATE_RADIUS;
+  });
+}
+
+function rememberClick(x, y) {
+  recentClicks.push({ x, y, time: Date.now() });
+}
+
+async function loadImageToMat(imgPath) {
+  if (!fs.existsSync(imgPath)) {
+    throw new Error(`Template not found: ${imgPath}`);
+  }
+
+  const image = await Jimp.read(imgPath);
+  const { data, width, height } = image.bitmap;
+
+  const mat = new cv.Mat(height, width, cv.CV_8UC4);
+  mat.data.set(data);
+
+  return mat;
+}
+
+async function bufferToMat(buffer) {
+  const image = await Jimp.read(buffer);
+  const { data, width, height } = image.bitmap;
+
+  const mat = new cv.Mat(height, width, cv.CV_8UC4);
+  mat.data.set(data);
+
+  return mat;
+}
+
+function matchTemplateMulti(sourceMat, templateMat, threshold) {
+  const result = new cv.Mat();
+  cv.matchTemplate(sourceMat, templateMat, result, cv.TM_CCOEFF_NORMED);
+
+  const found = [];
+
+  for (let y = 0; y < result.rows; y++) {
+    for (let x = 0; x < result.cols; x++) {
+      const score = result.floatAt(y, x);
+
+      if (score >= threshold) {
+        found.push({
+          x,
+          y,
+          score,
+          width: templateMat.cols,
+          height: templateMat.rows,
+          centerX: x + Math.floor(templateMat.cols / 2),
+          centerY: y + Math.floor(templateMat.rows / 2),
+        });
+      }
+    }
+  }
+
+  result.delete();
+
+  found.sort((a, b) => b.score - a.score);
+
+  const filtered = [];
+
+  for (const item of found) {
+    const duplicate = filtered.some(saved => {
+      const dx = saved.centerX - item.centerX;
+      const dy = saved.centerY - item.centerY;
+      return Math.sqrt(dx * dx + dy * dy) < Math.min(item.width, item.height) * 0.6;
+    });
+
+    if (!duplicate) {
+      filtered.push(item);
+    }
+  }
+
+  return filtered;
+}
+
+async function prepareGoodTemplates() {
+  const prepared = [];
+
+  for (const templatePath of GOOD_TEMPLATES) {
+    prepared.push({
+      name: path.basename(templatePath),
+      mat: await loadImageToMat(templatePath),
+    });
+  }
+
+  return prepared;
+}
+
+async function runCanvasObjectClicker(page, canvasBox, durationMs, preparedTemplates) {
+  const endTime = Date.now() + durationMs;
+
+  while (Date.now() < endTime) {
+    const screenshot = await page.screenshot({
+      type: 'png',
+      clip: {
+        x: Math.round(canvasBox.x),
+        y: Math.round(canvasBox.y),
+        width: Math.round(canvasBox.width),
+        height: Math.round(canvasBox.height),
+      },
+    });
+
+    const frameMat = await bufferToMat(screenshot);
+
+    try {
+      const allMatches = [];
+
+      for (const tpl of preparedTemplates) {
+        const matches = matchTemplateMulti(frameMat, tpl.mat, MATCH_THRESHOLD);
+
+        for (const match of matches) {
+          allMatches.push({
+            ...match,
+            templateName: tpl.name,
+          });
+        }
+      }
+
+      allMatches.sort((a, b) => b.score - a.score);
+
+      if (allMatches.length > 0) {
+        console.log(
+          'Matches:',
+          allMatches.map(x => `${x.templateName}:${x.score.toFixed(2)}`).join(', ')
+        );
+      }
+
+      for (const item of allMatches) {
+        const clickX = Math.round(canvasBox.x + item.centerX);
+        const clickY = Math.round(canvasBox.y + item.centerY);
+
+        if (wasRecentlyClicked(clickX, clickY)) {
+          continue;
+        }
+
+        await page.mouse.click(clickX, clickY);
+        rememberClick(clickX, clickY);
+
+        await sleep(10);
+      }
+    } finally {
+      frameMat.delete();
+    }
+
+    await sleep(LOOP_DELAY_MS);
+  }
+}
+
+/*----------- END COIN CLICK EXTERNAL FUNC --------------*/
+
 
 async function start() {
   if (isRunning) return;
@@ -146,10 +346,13 @@ async function start() {
     await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-information-number', { timeout: 2000 });
     let coins2048Level = await page.$eval('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(13) .game-information-number', el => el.textContent.trim());
 
-    let maxLevel = Math.max(coinFisherLevel, coins2048Level);
+    await page.waitForSelector('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(2) .game-information-number', { timeout: 2000 });
+    let coinClickerLevel = await page.$eval('#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(2) .game-information-number', el => el.textContent.trim());
+
+    let maxLevel = Math.max(coinFisherLevel, coins2048Level, coinClickerLevel);
 
     async function runRandomGame() {
-        const games = [playCoinFisher, play2048];
+        const games = [playCoinFisher, play2048, playCoinClick];
         const randomGame = games[Math.floor(Math.random() * games.length)];
         await randomGame();
     }
@@ -233,7 +436,11 @@ async function start() {
             }
 
             console.log('Coin fisher finished');
+
+            await page.waitForSelector('.accept-button', { timeout: 20000 });
             await new Promise(resolve => setTimeout(resolve, 2000));
+            await page.click('.accept-button');
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
             await page.goto('https://rollercoin.com/game/choose_game', {
                 waitUntil: 'domcontentloaded'
@@ -300,7 +507,11 @@ async function start() {
             }
 
             console.log('2048 Coins finished');
+            
+            await page.waitForSelector('.accept-button', { timeout: 20000 });
             await new Promise(resolve => setTimeout(resolve, 2000));
+            await page.click('.accept-button');
+            await new Promise(resolve => setTimeout(resolve, 15000));
 
             await page.goto('https://rollercoin.com/game/choose_game', {
                 waitUntil: 'domcontentloaded'
@@ -320,6 +531,85 @@ async function start() {
             console.log('2048 Coins start button not found, skipping...');
         }
     }
+
+    async function playCoinClick() {
+  let preparedTemplates = [];
+  recentClicks.length = 0;
+
+  try {
+    await sleep(5000);
+
+    await page.waitForSelector(
+      '#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(2) .game-start-button > button',
+      { timeout: 2000 }
+    );
+
+    await sleep(2000);
+
+    await page.click(
+      '#root > div > div.content > div > div.react-wrapper > div > div > div.choose-game-container.col-12.col-lg-10 > div > div.row > div:nth-child(2) .game-start-button > button'
+    );
+
+    await sleep(2000);
+
+    console.log(`Coin Clicker started at level ${coinClickerLevel}`);
+    console.log(typeof cv.Mat); // должно быть function
+
+    await page.waitForSelector('canvas', { timeout: 5000 });
+
+    const canvas = await page.$('canvas');
+    if (!canvas) {
+      throw new Error('Canvas not found');
+    }
+
+    const box = await canvas.boundingBox();
+    if (!box) {
+      throw new Error('Canvas not visible');
+    }
+
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    await page.mouse.click(centerX, centerY);
+
+    await sleep(1500);
+
+    preparedTemplates = await prepareGoodTemplates();
+
+    const gameDurationMs = 30000;
+    await runCanvasObjectClicker(page, box, gameDurationMs, preparedTemplates);
+
+    console.log('Coin Clicker finished');
+
+    await page.waitForSelector('.accept-button', { timeout: 20000 });
+    await sleep(2000);
+    await page.click('.accept-button');
+
+    await sleep(15000);
+
+    await page.goto('https://rollercoin.com/game/choose_game', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    await sleep(2000);
+
+    const pages = await browser.pages();
+
+    for (let i = 1; i < pages.length; i++) {
+      await pages[i].close();
+    }
+
+    await runRandomGame();
+  } catch (e) {
+    console.log('Coin Clicker start button not found or failed:', e.message);
+  } finally {
+    for (const tpl of preparedTemplates) {
+      if (tpl.mat) {
+        tpl.mat.delete();
+      }
+    }
+  }
+}
+ 
 
   } catch (e) {
     console.error('Task error:', e);
