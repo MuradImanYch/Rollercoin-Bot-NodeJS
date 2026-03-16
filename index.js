@@ -352,7 +352,7 @@ async function start() {
     let maxLevel = Math.max(coinFisherLevel, coins2048Level, coinClickerLevel);
 
     async function runRandomGame() {
-        const games = [playCoinFisher, play2048, playCoinClick];
+        const games = [playCoinFisher, play2048];
         const randomGame = games[Math.floor(Math.random() * games.length)];
         await randomGame();
     }
